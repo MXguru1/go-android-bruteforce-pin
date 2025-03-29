@@ -66,6 +66,12 @@ On my Sony you have to wait for 30 seconds after you have entered 5 PINs.
 For the Sony it takes on average about 8 seconds to enter 5 pins. Then 30 second of backoff time to wait before you
 can enter another 5 pins.
 
+# Troubleshooting
+If you are having compiling errors relating to gousb, remember to add the following environment variable:
+```shell
+CGO_ENABLED=1
+```
+
 # Demo
 ![Demo](media/android-bruteforce-demo.webp)
 
