@@ -5,6 +5,7 @@ import (
 	"github.com/jeanbritz/go-android-bruteforce-pin.git/pkg/hid"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 		logger.Fatalln(err)
 	}
 	if len(devices) > 0 {
-		logger.Println("Found Android HID device:" + devices[0].Manufacturer)
+		logger.Println("Found Android HID device: " + devices[0].Manufacturer)
 	} else {
 		logger.Println("Did not find any HID device")
 		os.Exit(0)
@@ -36,14 +37,15 @@ func main() {
 	touchscreen := hid.Touchscreen{
 		Accessory: touch,
 	}
+	time.Sleep(2 * time.Second) // This necessary to avoid pipe errors
 
 	// Start X,Y coordinates
 	x1 := 5000
-	y1 := 7500
+	y1 := 9000
 
 	// End X,Y coordinates
 	x2 := 5000
-	y2 := 4000
+	y2 := 1000
 
 	logger.Println("Attempting to perform swipe")
 	touchscreen.Swipe(int16(x1), int16(y1), int16(x2), int16(y2))

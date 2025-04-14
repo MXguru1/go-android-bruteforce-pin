@@ -72,6 +72,17 @@ If you are having compiling errors relating to gousb, remember to add the follow
 CGO_ENABLED=1
 ```
 
+## github.com/google/gousb: exec: "pkg-config": executable file not found in $PATH
+If you get the following error when compiling:
+```shell
+github.com/google/gousb: exec: "pkg-config": executable file not found in $PATH
+```
+For Debian/Kali do the following:
+```shell
+sudo apt-get install pkg-config
+```
+
+
 # Demo
 ![Demo](media/android-bruteforce-demo.webp)
 
