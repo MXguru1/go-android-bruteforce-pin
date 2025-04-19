@@ -29,24 +29,30 @@ func main() {
 	phone := devices[0]
 	defer phone.Close()
 
-	touch, err := phone.Register(hid.TouchscreenReportDesc)
+	touch, err := phone.Register(hid.TouchscreenReportDesc2)
 	if err != nil {
 		logger.Fatalln(err)
 	}
-
-	touchscreen := hid.Touchscreen{
-		Accessory: touch,
+	swiper := hid.Swiper{
+		Accessory:    touch,
+		ScreenHeight: 1280,
+		ScreenWidth:  720,
+		StepDuration: time.Second,
 	}
+
 	time.Sleep(2 * time.Second) // This necessary to avoid pipe errors
 
 	// Start X,Y coordinates
-	x1 := 5000
-	y1 := 9000
-
-	// End X,Y coordinates
-	x2 := 5000
-	y2 := 1000
+	//x1 := (200 / 1920) * 32767
+	//y1 := (300 / 1080) * 32767
+	//
+	//// End X,Y coordinates
+	//x2 := (600 / 1920) * 32767
+	//y2 := (700 / 1080) * 32767
+	//
+	//x3 := 5000
+	//y3 := 1000
 
 	logger.Println("Attempting to perform swipe")
-	touchscreen.Swipe(int16(x1), int16(y1), int16(x2), int16(y2))
+	swiper.PerformSwipe(200, 300, 600, 700, 5)
 }
