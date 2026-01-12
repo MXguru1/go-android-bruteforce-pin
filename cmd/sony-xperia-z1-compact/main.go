@@ -80,7 +80,8 @@ func main() {
 		Y: 5500,
 	}
 
-	devices, err := accessory.GetDevices(2)
+	devices, err := accessory.GetDevices
+
 	if err != nil {
 		logger.Fatalln(err)
 	}

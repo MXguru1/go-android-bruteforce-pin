@@ -1,6 +1,7 @@
 {
     "version": "0.2.0",
-    "configurations": [
+    "configurations": [        
+        
         {
             "name": "Launch Sony Script",
             "type": "go",
@@ -8,7 +9,7 @@
             "mode": "auto",
             "console": "integratedTerminal",
             "asRoot": true,
-            "program": "${workspaceFolder}/sony-xperia-z1-compact/cmd/main.go"
+            "program": "${workspaceFolder}/cmd/sony-xperia-z1-compact/main.go"
         }
     ]
 }

@@ -14,10 +14,9 @@
 
 package gousb
 
-import (
+import 
 	"fmt"
 	"log"
-	"reflect"
 	"sync"
 	"time"
 	"unsafe"
@@ -98,29 +97,24 @@ func (ep libusbEndpoint) endpointDesc(dev *DeviceDesc) EndpointDesc {
 	//   bInterval number of microframes. This value must be in the range
 	//   from 0 to 255.
 	case dev.Speed == SpeedHigh && ei.TransferType == TransferTypeBulk:
-		ei.PollInterval = time.Duration(ep.bInterval) * 125 * time.Microsecond
+		if ei.Direction == EndpointDirectionOut {
+			ei.PollInterval = time.Duration(ep.bInterval) * 125 * time.Microsecond
+		}
 
 	// If the device conforms to USB[23].x and the device is in high speed
 	// mode:
-	//   For high-speed isochronous endpoints, this value must be in
+	//   For high-speed isochronous/interrupt endpoints, this value must be in
 	//   the range from 1 to 16. The bInterval value is used as the exponent
-	//   for a 2bInterval-1 value; e.g., a bInterval of 4 means a period
+	//   for a 2^(bInterval-1) value; e.g., a bInterval of 4 means a period
 	//   of 8 (2^(4-1)).
-	//   For high-speed interrupt endpoints, the bInterval value is used as
-	//   the exponent for a 2bInterval-1 value; e.g., a bInterval of 4 means
-	//   a period of 8 (2^(4-1)). This value must be from 1 to 16.
 	// If the device conforms to USB3.x and the device is in SuperSpeed mode:
-	//   Interval for servicing the endpoint for data transfers. Expressed in
-	//   125-µs units.
-	//   For Enhanced SuperSpeed isochronous and interrupt endpoints, this
-	//   value shall be in the range from 1 to 16. However, the valid ranges
-	//   are 8 to 16 for Notification type Interrupt endpoints. The bInterval
-	//   value is used as the exponent for a 2(^bInterval-1) value; e.g., a
-	//   bInterval of 4 means a period of 8 (2^(4-1) → 2^3 → 8).
-	//   This field is reserved and shall not be used for Enhanced SuperSpeed
-	//   bulk or control endpoints.
-	case dev.Speed == SpeedHigh || dev.Speed == SpeedSuper:
-		ei.PollInterval = 125 * time.Microsecond << (ep.bInterval - 1)
+	//   For SuperSpeed isochronous/interrupt endpoints, this value is in
+	//   the range from 1 to 16. The bInterval value is used as the exponent
+	//   for a 2^(bInterval-1) value.
+	case (dev.Speed == SpeedHigh || dev.Speed == SpeedSuper) && (ei.TransferType == TransferTypeInterrupt || ei.TransferType == TransferTypeIsochronous):
+		if ep.bInterval > 0 {
+			ei.PollInterval = 125 * time.Microsecond << (ep.bInterval - 1)
+		}
 	}
 	return ei
 }
@@ -202,12 +196,7 @@ func (libusbImpl) getDevices(ctx *libusbContext) ([]*libusbDevice, error) {
 	if cnt < 0 {
 		return nil, fromErrNo(C.int(cnt))
 	}
-	var devs []*C.libusb_device
-	*(*reflect.SliceHeader)(unsafe.Pointer(&devs)) = reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(list)),
-		Len:  int(cnt),
-		Cap:  int(cnt),
-	}
+	devs := unsafe.Slice(list, int(cnt))
 	var ret []*libusbDevice
 	for _, d := range devs {
 		ret = append(ret, (*libusbDevice)(d))
@@ -280,11 +269,7 @@ func (libusbImpl) getDeviceDesc(d *libusbDevice) (*DeviceDesc, error) {
 		}
 
 		var ifaces []C.struct_libusb_interface
-		*(*reflect.SliceHeader)(unsafe.Pointer(&ifaces)) = reflect.SliceHeader{
-			Data: uintptr(unsafe.Pointer(cfg._interface)),
-			Len:  int(cfg.bNumInterfaces),
-			Cap:  int(cfg.bNumInterfaces),
-		}
+		ifaces = unsafe.Slice(cfg._interface, int(cfg.bNumInterfaces))
 		c.Interfaces = make([]InterfaceDesc, 0, len(ifaces))
 		// a map of interface numbers to a set of alternate settings numbers
 		hasIntf := make(map[int]map[int]bool)
@@ -293,12 +278,7 @@ func (libusbImpl) getDeviceDesc(d *libusbDevice) (*DeviceDesc, error) {
 				continue
 			}
 
-			var alts []C.struct_libusb_interface_descriptor
-			*(*reflect.SliceHeader)(unsafe.Pointer(&alts)) = reflect.SliceHeader{
-				Data: uintptr(unsafe.Pointer(iface.altsetting)),
-				Len:  int(iface.num_altsetting),
-				Cap:  int(iface.num_altsetting),
-			}
+			alts := unsafe.Slice(iface.altsetting, int(iface.num_altsetting))
 			descs := make([]InterfaceSetting, 0, len(alts))
 			for _, alt := range alts {
 				i := InterfaceSetting{
@@ -319,12 +299,7 @@ func (libusbImpl) getDeviceDesc(d *libusbDevice) (*DeviceDesc, error) {
 				}
 				hasIntf[i.Number][i.Alternate] = true
 
-				var ends []C.struct_libusb_endpoint_descriptor
-				*(*reflect.SliceHeader)(unsafe.Pointer(&ends)) = reflect.SliceHeader{
-					Data: uintptr(unsafe.Pointer(alt.endpoint)),
-					Len:  int(alt.bNumEndpoints),
-					Cap:  int(alt.bNumEndpoints),
-				}
+				ends := unsafe.Slice(alt.endpoint, int(alt.bNumEndpoints))
 				i.Endpoints = make(map[EndpointAddress]EndpointDesc, len(ends))
 				for _, end := range ends {
 					epi := libusbEndpoint(end).endpointDesc(dev)
@@ -366,14 +341,17 @@ func (libusbImpl) reset(d *libusbDevHandle) error {
 }
 
 func (libusbImpl) control(d *libusbDevHandle, timeout time.Duration, rType, request uint8, val, idx uint16, data []byte) (int, error) {
-	dataSlice := (*reflect.SliceHeader)(unsafe.Pointer(&data))
+	var dataPtr *C.uchar
+	if len(data) > 0 {
+		dataPtr = (*C.uchar)(unsafe.Pointer(&data[0]))
+	}
 	n := C.libusb_control_transfer(
 		(*C.libusb_device_handle)(d),
 		C.uint8_t(rType),
 		C.uint8_t(request),
 		C.uint16_t(val),
 		C.uint16_t(idx),
-		(*C.uchar)(unsafe.Pointer(dataSlice.Data)),
+		dataPtr,
 		C.uint16_t(len(data)),
 		C.uint(timeout/time.Millisecond))
 	if n < 0 {
@@ -473,13 +451,10 @@ func (libusbImpl) submit(t *libusbTransfer) error {
 func (libusbImpl) buffer(t *libusbTransfer) []byte {
 	// TODO(go1.10?): replace with more user-friendly construct once
 	// one exists. https://github.com/golang/go/issues/13656
-	var ret []byte
-	*(*reflect.SliceHeader)(unsafe.Pointer(&ret)) = reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(t.buffer)),
-		Len:  int(t.length),
-		Cap:  int(t.length),
+	if t.length == 0 || t.buffer == nil {
+		return nil
 	}
-	return ret
+	return unsafe.Slice((*byte)(unsafe.Pointer(t.buffer)), int(t.length))
 }
 
 func (libusbImpl) data(t *libusbTransfer) (int, TransferStatus) {
@@ -515,6 +490,12 @@ func xferCallback(xfer *C.struct_libusb_transfer) {
 	xferDoneMap.RLock()
 	ch := xferDoneMap.m[(*libusbTransfer)(xfer)]
 	xferDoneMap.RUnlock()
+	if ch == nil {
+		// Avoid blocking forever on a nil channel if a callback fires for an
+		// untracked transfer (e.g. racing with free/cancel).
+		log.Printf("xferCallback: missing done channel for transfer %p", xfer)
+		return
+	}
 	ch <- struct{}{}
 }
 
