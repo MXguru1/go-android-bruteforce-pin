@@ -2,10 +2,12 @@ package accessory
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
-	"github.com/google/gousb"
 	"math/rand"
 	"time"
+
+	"github.com/google/gousb"
 )
 
 // SkipList is a list of vendor IDs that are known to not support the accessory protocol
@@ -17,10 +19,63 @@ var SkipList = []uint16{
 	0x2109, // VIA Labs, Inc.
 }
 
+// GetDevice return a single device match protocol version 2
+func GetDevice(ctx *gousb.Context) (device *AccessoryDevice, err error) {
+	devices, err := GetDevices(ctx, 2)
+	if err != nil {
+		return nil, err
+	}
+	if len(devices) == 0 {
+		return nil, errors.New("no device found")
+	}
+	defer func() {
+		if len(devices) > 1 {
+			for _, v := range devices[1:] {
+				_ = v.Close()
+			}
+		}
+	}()
+	return devices[0], nil
+}
+
+// GetDeviceWithSerial return a device match serial with device.SerialNumber()
+func GetDeviceWithSerial(ctx *gousb.Context, serial string) (device *AccessoryDevice, err error) {
+	devices, err := GetDevices(ctx, 2)
+	if err != nil {
+		return nil, err
+	}
+	if len(devices) == 0 {
+		return nil, errors.New("no device found")
+	}
+	defer func() {
+		if len(devices) > 1 {
+			for _, v := range devices {
+				if v != device {
+					_ = v.Close()
+				}
+			}
+		}
+	}()
+	for _, device = range devices {
+		s, err1 := device.Device.SerialNumber()
+		if err1 != nil {
+			continue
+		}
+		if s == serial {
+			return
+		}
+	}
+	return nil, errors.New("device not found")
+}
+
 // GetDevices return a list of devices that support the specified protocol version
-func GetDevices(protocolVersion uint16) (accessoryList []*AccessoryDevice, err error) {
+func GetDevices(ctx *gousb.Context, protocolVersion uint16) (accessoryList []*AccessoryDevice, err error) {
+	return getDevices(ctx, protocolVersion, false)
+}
+
+func getDevices(ctx *gousb.Context, protocolVersion uint16, logInfo bool) (accessoryList []*AccessoryDevice, err error) {
 	accessoryList = make([]*AccessoryDevice, 0)
-	devices, err := gousb.NewContext().OpenDevices(func(desc *gousb.DeviceDesc) bool {
+	devices, err := ctx.OpenDevices(func(desc *gousb.DeviceDesc) bool {
 		for _, id := range SkipList {
 			if desc.Vendor == gousb.ID(id) {
 				return false
@@ -34,14 +89,18 @@ func GetDevices(protocolVersion uint16) (accessoryList []*AccessoryDevice, err e
 	for _, d := range devices {
 		p, err := getProtocol(d)
 		if err != nil || p < protocolVersion {
-			d.Close()
-			fmt.Println("No Protocol!")
+			_ = d.Close()
+			if logInfo {
+				fmt.Println("No Protocol!")
+			}
 			continue
 		}
 		manu, err := d.Manufacturer()
 		if err != nil {
-			d.Close()
-			fmt.Println("No ManuFacturer!")
+			_ = d.Close()
+			if logInfo {
+				fmt.Println("No ManuFacturer!")
+			}
 			continue
 		}
 		accessoryList = append(accessoryList, NewAccessoryDevice(d, p, manu))

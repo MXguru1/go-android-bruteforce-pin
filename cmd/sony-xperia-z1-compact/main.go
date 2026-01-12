@@ -1,15 +1,21 @@
 package main
 
 import (
+	"bufio"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	accessory "github.com/Tryanks/go-accessoryhid"
 	"github.com/jeanbritz/go-android-bruteforce-pin.git/pkg/hid"
 	"github.com/jeanbritz/go-android-bruteforce-pin.git/pkg/utils"
 )
+
+//go:embed pins-5-length.txt
+var pinsFile string
 
 type Pos struct {
 	X int16
@@ -97,7 +103,7 @@ func main() {
 		Accessory: touch,
 	}
 
-	pins, err := utils.ReadLines("../pins/pins-5-length.txt")
+	pins, err := readLinesFromEmbed(pinsFile)
 	if err != nil {
 		logger.Fatalf("Could not find or load pins file, %s", err)
 	}
@@ -158,4 +164,13 @@ func main() {
 		}
 	}
 
+}
+
+func readLinesFromEmbed(fileContent string) ([]string, error) {
+	var lines []string
+	scanner := bufio.NewScanner(strings.NewReader(fileContent))
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
 }

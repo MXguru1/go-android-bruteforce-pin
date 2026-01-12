@@ -16,19 +16,27 @@ go get -u github.com/Tryanks/go-accessoryhid
 # Usage
 
 Example:
+
 ```go
 package main
 
-import accessory "github.com/Tryanks/go-accessoryhid"
+import (
+	accessory "github.com/Tryanks/go-accessoryhid"
+	"github.com/google/gousb"
+	"time"
+)
 
 func main() {
-	devices, err := accessory.GetDevices(2)
+	ctx := gousb.NewContext()
+	defer ctx.Close()
+	devices, err := accessory.GetDevices(ctx, 2)
 	if err != nil {
 		panic(err)
 	}
 	phone := devices[0]
 	defer phone.Close()
 	keyboard, err := phone.Register(accessory.KeyboardReportDesc) // Register keyboard report descriptor
+	time.Sleep(200 * time.Millisecond)
 	err = keyboard.SendEvent([]byte{
 		0x00, 0x00, 0x04, 0x00, 0x00, 0x00,
 	}) // Hid event (pressing 'a')
@@ -43,3 +51,12 @@ func main() {
 	}
 }
 ```
+
+# FAQ
+
+### Q: Getting `libusb: pipe error [code -9]` when sending HID events after calling `Register()`.
+**A**: This error typically occurs due to sending events too quickly after HID descriptor registration.
+
+The Android device may not have completed its initialization process.
+
+The solution is to **add a short delay after calling `Register()`**, 

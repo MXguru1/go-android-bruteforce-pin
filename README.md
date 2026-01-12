@@ -105,3 +105,20 @@ can enter another 5 pins.
 
 * <http://ak.aos.sk/images/repozitar/sam/sam_1_2022/sam_1_2022_4.pdf>
 * <https://arxiv.org/pdf/2003.04868.pdf>
+
+# How to build
+
+To build the executable, you will need to have Go and a C compiler installed.
+
+## Windows
+
+1.  Install Go from the official website: <https://golang.org/dl/>
+2.  Install MinGW-w64 from here: <https://www.mingw-w64.org/downloads/>
+3.  Run the `build.bat` script.
+
+## Linux/macOS
+
+1.  Install Go from your package manager or the official website.
+2.  Install `libusb` and a C compiler (like `gcc`) from your package manager.
+3.  Run the `build.sh` script.
+

@@ -1,5 +1,5 @@
-# github.com/Tryanks/go-accessoryhid v0.0.0-20240225051052-d9ed29fa4f0d
-## explicit; go 1.22
+# github.com/Tryanks/go-accessoryhid v0.9.5
+## explicit; go 1.23
 github.com/Tryanks/go-accessoryhid
 # github.com/google/gousb v1.1.3
 ## explicit; go 1.16
