@@ -1,0 +1,14 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "dependencies": {
+        "libusb": "^0.0.0-pre",
+      },
+    },
+  },
+  "packages": {
+    "libusb": ["libusb@0.0.0-pre", "", {}, "sha512-zbiKd6+pqJ/R/RKyOdR4FPfZpxt6WfHevgsCZz/9waLPJ0Hf5frfmZ7oWWYbPV49Qlfa9oNJGdAmuArgo4K3ug=="],
+  }
+}

@@ -1,0 +1,4 @@
+root: C:\Users\Duayne\OneDrive\Documents\GitHub\go-android-bruteforce-pin 
+path: C:\Program Files\nodejs 
+arch: 64 
+proxy: none
